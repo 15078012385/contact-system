@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>联系人统计 - ECharts 示例</title>
+    <script src="vue2_resource/vue@2.6.14.js"></script>
+    <link rel="stylesheet" href="vue2_resource/index.css">
+    <script src="vue2_resource/elementui.js"></script>
+    <script src="vue2_resource/echarts.min.js"></script>
+    <script src="vue2_resource/axios.min.js"></script>
+    <script src="vue2_resource/axiosWrapper.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;  /* 修改为横向布局 */
+            justify-content: center;
+            gap: 30px;
+            margin: 20px auto;
+            max-width: 1400px;
+        }
+        .chart-container {
+            width: 650px;
+            height: 450px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            transition: transform 0.3s ease;
+        }
+        .chart-container:hover {
+            transform: translateY(-5px);
+        }
+        .chart-title {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .emoji-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div  class="container">
+        <div data-role="admin" class="chart-container" ref="roleChart"></div>
+        <div data-role="admin,user" class="chart-container" ref="contactDistributionChart"></div>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                roleStatistics: [],
+                totalContacts: 0,
+                favoriteContacts: 0
+            }
+        },
+        mounted() {
+            this.fetchRoleStatistics();
+            this.fetchContactStatistics();
+            window.addEventListener('resize', this.handleResize);
+        },
+        beforeDestroy() {
+            window.removeEventListener('resize', this.handleResize);
+        },
+        methods: {
+            handleResize() {
+                const charts = [
+                    this.$refs.roleChart && echarts.getInstanceByDom(this.$refs.roleChart),
+                    this.$refs.contactDistributionChart && echarts.getInstanceByDom(this.$refs.contactDistributionChart)
+                ];
+                charts.forEach(chart => chart && chart.resize());
+            },
+            fetchRoleStatistics() {
+                axiosWrapper.get('/dashboard/role-statistics')
+                    .then(response => {
+                        this.roleStatistics = response.data;
+                        this.renderRoleChart();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching role statistics:', error);
+                        this.$message.error('获取角色统计数据失败');
+                    });
+            },
+            fetchContactStatistics() {
+                const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+                const userId = userInfo ? userInfo.id : null;
+
+                if (userId) {
+                    axiosWrapper.get(`/api/contacts/count/${userId}`)
+                        .then(response => {
+                            const result = response.data;
+                            this.totalContacts = result.totalContacts;
+                            this.favoriteContacts = result.favoriteContacts;
+                            this.renderContactCharts();
+                        })
+                        .catch(error => {
+                            console.error('Error fetching contact statistics:', error);
+                            this.$message.error('获取联系人统计数据失败');
+                        });
+                } else {
+                    this.$message.error('用户未登录');
+                }
+            },
+            renderRoleChart() {
+                const chartDom = this.$refs.roleChart;
+                const myChart = echarts.init(chartDom);
+                const option = {
+                    title: {
+                        text: '👥 用户角色分布',
+                        left: 'center',
+                        top: 20,
+                        textStyle: {
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                            color: '#333'
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: '{a} <br/>{b}: {c} ({d}%)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderColor: '#eee',
+                        borderWidth: 1,
+                        textStyle: {
+                            color: '#333'
+                        }
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        left: '5%',
+                        top: 'center',
+                        textStyle: {
+                            fontSize: 14
+                        }
+                    },
+                    series: [
+                        {
+                            name: '角色分布',
+                            type: 'pie',
+                            radius: ['40%', '70%'],
+                            center: ['60%', '50%'],
+                            avoidLabelOverlap: true,
+                            itemStyle: {
+                                borderRadius: 10,
+                                borderColor: '#fff',
+                                borderWidth: 2
+                            },
+                            label: {
+                                show: true,
+                                formatter: '{b}: {d}%'
+                            },
+                            emphasis: {
+                                label: {
+                                    show: true,
+                                    fontSize: 16,
+                                    fontWeight: 'bold'
+                                },
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            },
+                            data: this.roleStatistics.map(item => ({
+                                value: item.count,
+                                name: item.role
+                            }))
+                        }
+                    ],
+                    color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de']
+                };
+                myChart.setOption(option);
+            },
+            renderContactCharts() {
+                this.renderContactDistributionChart();
+            },
+            renderContactDistributionChart() {
+                const chartDom = this.$refs.contactDistributionChart;
+                const myChart = echarts.init(chartDom);
+                const option = {
+                    title: {
+                        text: '📊 联系人分布',
+                        left: 'center',
+                        top: 20,
+                        textStyle: {
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                            color: '#333'
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: {
+                            type: 'shadow'
+                        },
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderColor: '#eee',
+                        borderWidth: 1,
+                        textStyle: {
+                            color: '#333'
+                        }
+                    },
+                    grid: {
+                        left: '10%',
+                        right: '10%',
+                        bottom: '15%',
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: ['👥 总联系人', '⭐ 收藏联系人'],
+                        axisLabel: {
+                            fontSize: 14,
+                            interval: 0
+                        },
+                        axisLine: {
+                            lineStyle: {
+                                color: '#999'
+                            }
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLine: {
+                            show: true,
+                            lineStyle: {
+                                color: '#999'
+                            }
+                        },
+                        splitLine: {
+                            lineStyle: {
+                                type: 'dashed'
+                            }
+                        }
+                    },
+                    series: [
+                        {
+                            name: '数量',
+                            type: 'bar',
+                            barWidth: '40%',
+                            data: [
+                                {
+                                    value: this.totalContacts,
+                                    itemStyle: {
+                                        color: '#5470c6'
+                                    }
+                                },
+                                {
+                                    value: this.favoriteContacts,
+                                    itemStyle: {
+                                        color: '#91cc75'
+                                    }
+                                }
+                            ],
+                            itemStyle: {
+                                borderRadius: [5, 5, 0, 0]
+                            },
+                            label: {
+                                show: true,
+                                position: 'top',
+                                fontSize: 14
+                            }
+                        }
+                    ]
+                };
+                myChart.setOption(option);
+            }
+        }
+    });
+</script>
+</body>
+</html>

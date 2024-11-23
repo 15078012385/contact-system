@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的收藏联系人</title>
+    <script src="vue2_resource/vue@2.6.14.js"></script>
+    <link rel="stylesheet" href="vue2_resource/index.css">
+    <script src="vue2_resource/elementui.js"></script>
+    <script src="vue2_resource/axios.min.js"></script>
+    <script src="vue2_resource/axiosWrapper.js"></script>
+
+    <style>
+        /* ... 保持原有的基础样式 ... */
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+            font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+            margin: 0;
+        }
+
+        .page-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #409EFF;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px 0;
+        }
+
+        .contacts-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            align-items: start;
+        }
+
+        .contact-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .contact-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 新增精美渐变背景样式 */
+        .card-header {
+            position: relative;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        /* 精美渐变色背景集合 */
+        .gradient-1 .card-header {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        .gradient-2 .card-header {
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+        }
+
+        .gradient-3 .card-header {
+            background: linear-gradient(135deg, #fad0c4 0%, #ffd1ff 100%);
+        }
+
+        .gradient-4 .card-header {
+            background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+        }
+
+        .gradient-5 .card-header {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+        }
+
+        .gradient-6 .card-header {
+            background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%);
+        }
+
+        .gradient-7 .card-header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .gradient-8 .card-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .gradient-9 .card-header {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .gradient-10 .card-header {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .avatar-container {
+            position: relative;
+            margin: 0 auto;
+            width: 100px;
+            height: 100px;
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .contact-card:hover .avatar {
+            transform: scale(1.05);
+        }
+
+        .contact-info {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: white;
+        }
+
+        .contact-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #303133;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .contact-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        /* 根据不同渐变背景匹配的标签样式 */
+        .gradient-1 .contact-tag {
+            background: rgba(168, 237, 234, 0.2);
+            color: #38a3a0;
+        }
+
+        .gradient-2 .contact-tag {
+            background: rgba(224, 195, 252, 0.2);
+            color: #7352c9;
+        }
+
+        .gradient-3 .contact-tag {
+            background: rgba(250, 208, 196, 0.2);
+            color: #d48577;
+        }
+
+        .gradient-4 .contact-tag {
+            background: rgba(212, 252, 121, 0.2);
+            color: #68a831;
+        }
+
+        .gradient-5 .contact-tag {
+            background: rgba(132, 250, 176, 0.2);
+            color: #389c6b;
+        }
+
+        .gradient-6 .contact-tag {
+            background: rgba(252, 203, 144, 0.2);
+            color: #b8710d;
+        }
+
+        .gradient-7 .contact-tag {
+            background: rgba(240, 147, 251, 0.2);
+            color: #a939bb;
+        }
+
+        .gradient-8 .contact-tag {
+            background: rgba(79, 172, 254, 0.2);
+            color: #2d7ec7;
+        }
+
+        .gradient-9 .contact-tag {
+            background: rgba(67, 233, 123, 0.2);
+            color: #27a854;
+        }
+
+        .gradient-10 .contact-tag {
+            background: rgba(250, 112, 154, 0.2);
+            color: #d13964;
+        }
+
+        .contact-tag {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .contact-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #606266;
+            font-size: 14px;
+            padding: 4px 0;
+            word-break: break-all;
+        }
+
+        .contact-detail i {
+            flex-shrink: 0;
+            width: 16px;
+            text-align: center;
+        }
+
+        .contact-remark {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* 空状态样式 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #909399;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }/* 联系人详情弹框样式 */
+        .contact-dialog {
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        /* 覆盖 element-ui 的默认样式 */
+        .contact-dialog .el-dialog__header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            margin: 0;
+        }
+
+        .contact-dialog .el-dialog__title {
+            color: #333;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .contact-dialog .el-dialog__body {
+            padding: 20px;
+        }
+
+        /* 详情内容容器 */
+        .contact-detail-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* 头像容器 */
+        .contact-detail-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin-bottom: 25px;
+            border: 4px solid white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .contact-detail-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 详情信息列表 */
+        .contact-detail-info {
+            width: 100%;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px 20px;
+        }
+
+        .contact-detail-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .contact-detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .contact-detail-item i {
+            width: 20px;
+            margin-right: 10px;
+            color: #409EFF;
+        }
+
+        .contact-detail-label {
+            color: #666;
+            font-size: 14px;
+            width: 70px;
+            flex-shrink: 0;
+        }
+
+        .contact-detail-value {
+            color: #333;
+            font-size: 14px;
+            flex: 1;
+            word-break: break-all;
+        }
+
+        /* 关闭按钮样式 */
+        .contact-dialog .el-dialog__headerbtn {
+            top: 15px;
+            right: 15px;
+        }
+
+        .contact-dialog .el-dialog__headerbtn .el-dialog__close {
+            color: #333;
+        }
+
+        /* 响应式调整 */
+        @media screen and (max-width: 768px) {
+            .contacts-container {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 15px;
+                padding: 10px;
+            }
+
+            .contact-card {
+                border-radius: 12px;
+            }
+
+            .avatar-container {
+                width: 80px;
+                height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="page-title">
+        <i class="el-icon-star-on"></i> 我的收藏联系人
+    </div>
+
+    <template v-if="favoriteContacts.length === 0">
+        <div class="empty-state">
+            <i class="el-icon-star-off"></i>
+            <p>还没有收藏的联系人哦~</p>
+        </div>
+    </template>
+
+    <div v-else class="contacts-container">
+        <div
+                v-for="(contact, index) in favoriteContacts"
+                :key="contact.id"
+                class="contact-card"
+                :class="'gradient-' + ((index % 10) + 1)"
+                @click="showContactDetail(contact)"
+        >
+            <div class="card-header">
+                <div class="avatar-container">
+                    <img :src="contact.avatar" class="avatar" :alt="contact.name">
+                </div>
+            </div>
+            <div class="contact-info">
+                <h3 class="contact-name">
+                    {{ contact.name }}
+                    <i class="el-icon-star-on" style="color: #F7BA2A;"></i>
+                </h3>
+                <div class="contact-tags">
+                    <span class="contact-tag">{{ contact.company }}</span>
+                    <span class="contact-tag">{{ contact.position }}</span>
+                </div>
+                <div class="contact-detail">
+                    <i class="el-icon-mobile-phone"></i>
+                    <span>
+                        <template v-for="(phone, idx) in contact.mobile">
+                            <span :key="idx">{{ phone }}</span>
+                            <br v-if="idx < contact.mobile.length - 1">
+                        </template>
+                    </span>
+                </div>
+                <div class="contact-detail">
+                    <i class="el-icon-message"></i>
+                    <span>{{ contact.email }}</span>
+                </div>
+                <div class="contact-detail" v-if="contact.address">
+                    <i class="el-icon-location"></i>
+                    <span>{{ contact.address }}</span>
+                </div>
+                <div v-if="contact.remark" class="contact-remark">
+                    <i class="el-icon-notebook-2"></i> {{ contact.remark }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 联系人详情对话框 -->
+    <el-dialog
+            :visible.sync="dialogVisible"
+            :title="selectedContact ? selectedContact.name + ' 的详细信息' : ''"
+            width="460px"
+            custom-class="contact-dialog"
+    >
+        <div v-if="selectedContact" class="contact-detail-container">
+            <div class="contact-detail-avatar">
+                <img :src="selectedContact.avatar" :alt="selectedContact.name">
+            </div>
+            <div class="contact-detail-info">
+                <div class="contact-detail-item">
+                    <i class="el-icon-office-building"></i>
+                    <span class="contact-detail-label">公司</span>
+                    <span class="contact-detail-value">{{ selectedContact.company }}</span>
+                </div>
+                <div class="contact-detail-item">
+                    <i class="el-icon-user"></i>
+                    <span class="contact-detail-label">职位</span>
+                    <span class="contact-detail-value">{{ selectedContact.position }}</span>
+                </div>
+                <div class="contact-detail-item">
+                    <i class="el-icon-mobile-phone"></i>
+                    <span class="contact-detail-label">手机</span>
+                    <span class="contact-detail-value">
+                        <template v-for="(phone, idx) in selectedContact.mobile">
+                            <span :key="idx">{{ phone }}</span>
+                            <br v-if="idx < selectedContact.mobile.length - 1">
+                        </template>
+                    </span>
+                </div>
+                <div class="contact-detail-item">
+                    <i class="el-icon-message"></i>
+                    <span class="contact-detail-label">邮箱</span>
+                    <span class="contact-detail-value">{{ selectedContact.email }}</span>
+                </div>
+                <div class="contact-detail-item">
+                    <i class="el-icon-location"></i>
+                    <span class="contact-detail-label">地址</span>
+                    <span class="contact-detail-value">{{ selectedContact.address }}</span>
+                </div>
+                <div class="contact-detail-item">
+                    <i class="el-icon-date"></i>
+                    <span class="contact-detail-label">生日</span>
+                    <span class="contact-detail-value">{{ formatDate(selectedContact.birthday) }}</span>
+                </div>
+                <div class="contact-detail-item">
+                    <i class="el-icon-notebook-2"></i>
+                    <span class="contact-detail-label">备注</span>
+                    <span class="contact-detail-value">{{ selectedContact.remark }}</span>
+                </div>
+                <div class="contact-detail-item">
+                    <i class="el-icon-time"></i>
+                    <span class="contact-detail-label">收藏时间</span>
+                    <span class="contact-detail-value">{{ formatDateTime(selectedContact.updated) }}</span>
+                </div>
+            </div>
+        </div>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                favoriteContacts: [],
+                dialogVisible: false,
+                selectedContact: null
+            }
+        },
+        mounted() {
+            this.fetchFavoriteContacts();
+        },
+        methods: {
+            fetchFavoriteContacts() {
+                const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+                const userId = userInfo ? userInfo.id : null;
+
+                if (userId) {
+                    const url = `/api/contacts/user/${userId}`;
+                    axiosWrapper.get(url, {
+                        params: { collectStatus: 1 }
+                    })
+                        .then(response => {
+                            // 将手机号字符串转换为数组
+                            response.data.forEach(contact => {
+                                contact.mobile = contact.mobile ? contact.mobile.split(',') : [];
+                            });
+                            this.favoriteContacts = response.data;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching favorite contacts:', error);
+                            this.$message.error('获取收藏联系人列表失败');
+                        });
+                } else {
+                    this.$message.error('用户未登录');
+                }
+            },
+            showContactDetail(contact) {
+                this.selectedContact = contact;
+                this.dialogVisible = true;
+            },
+            formatDate(dateStr) {
+                return dateStr ? dateStr.split(' ')[0] : '';
+            },
+            formatDateTime(dateStr) {
+                return dateStr ? dateStr.replace('T', ' ').split('.')[0] : '';
+            }
+        }
+    });
+</script>
+</body>
+</html>

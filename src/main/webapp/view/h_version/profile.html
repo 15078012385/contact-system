@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户资料</title>
+    <script src="vue2_resource/vue@2.6.14.js"></script>
+    <link rel="stylesheet" href="vue2_resource/index.css">
+    <script src="vue2_resource/elementui.js"></script>
+    <script src="vue2_resource/axios.min.js"></script>
+<script src="vue2_resource/axiosWrapper.js"></script>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: Arial, sans-serif;
+        }
+
+        .profile-container {
+            max-width: 800px;
+            margin: 40px auto;
+            display: flex;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 30%;
+            background-color: #3a8ee6;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .main-content {
+            width: 70%;
+            background-color: white;
+            padding: 30px;
+        }
+
+        .avatar-container {
+            margin-bottom: 20px;
+        }
+
+        .avatar-container .el-avatar {
+            border: 4px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .user-name {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+
+        .user-role {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        .el-form-item {
+            margin-bottom: 22px;
+        }
+
+        .form-actions {
+            text-align: right;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="profile-container">
+        <div class="sidebar">
+            <div class="avatar-container">
+                <el-avatar :size="120" :src="user.avatarUrl"></el-avatar>
+            </div>
+            <h2 class="user-name">{{ user.nickname }}</h2>
+            <p class="user-role">{{ user.role }}</p>
+            <el-upload
+                    class="avatar-uploader"
+                    action="/file/upload"
+                    :show-file-list="false"
+                    :on-success="handleAvatarSuccess"
+                    :before-upload="beforeAvatarUpload">
+                <el-button size="small" type="text" style="color: white;">更换头像</el-button>
+            </el-upload>
+        </div>
+        <div class="main-content">
+            <h1>个人资料</h1>
+            <el-form :model="user" label-width="80px" :disabled="!isEditing">
+                <el-form-item label="用户名">
+                    <el-input disabled v-model="user.username"></el-input>
+                </el-form-item>
+                <el-form-item label="昵称">
+                    <el-input v-model="user.nickname"></el-input>
+                </el-form-item>
+                <el-form-item label="邮箱">
+                    <el-input v-model="user.email"></el-input>
+                </el-form-item>
+                <el-form-item label="电话">
+                    <el-input v-model="user.phone"></el-input>
+                </el-form-item>
+                <el-form-item label="地址">
+                    <el-input v-model="user.address"></el-input>
+                </el-form-item>
+                <el-form-item label="角色">
+                    <el-input v-model="user.role" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="创建时间">
+                    <el-input v-model="user.createTime" disabled></el-input>
+                </el-form-item>
+                <el-form-item label="更新时间">
+                    <el-input v-model="user.updateTime" disabled></el-input>
+                </el-form-item>
+            </el-form>
+            <div class="form-actions">
+                <el-button type="primary" @click="toggleEdit">{{ isEditing ? '保存' : '编辑' }}</el-button>
+                <el-button @click="cancelEdit" v-if="isEditing">取消</el-button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                user: {},
+                isEditing: false,
+                originalUser: {}
+            }
+        },
+        methods: {
+            loadUserInfo() {
+                const userInfo = localStorage.getItem('userInfo');
+                if (userInfo) {
+                    this.user = JSON.parse(userInfo);
+                } else {
+                    this.$message.error('未找到用户信息，请重新登录');
+                    // 可以在这里添加重定向到登录页面的逻辑
+                }
+            },
+            toggleEdit() {
+                if (this.isEditing) {
+                    this.saveProfile();
+                } else {
+                    this.startEdit();
+                }
+            },
+            startEdit() {
+                this.isEditing = true;
+                this.originalUser = JSON.parse(JSON.stringify(this.user));
+            },
+            saveProfile() {
+                this.isEditing = false;
+                axiosWrapper.put('/user/update', this.user)
+                    .then(response => {
+                        // 检查响应的 code
+                        if (response.code == 200) {
+                            // 更新成功
+                            localStorage.setItem('userInfo', JSON.stringify(this.user));
+                            this.$message.success(response.msg || '个人资料已更新');
+
+                            // 延迟1.5秒后刷新父页面
+                            setTimeout(() => {
+                                window.parent.location.reload();
+                            }, 1500);
+                        } else {
+                            // 服务器返回了错误信息
+                            this.$message.error(response.msg)
+                        }
+                    })
+            },
+            cancelEdit() {
+                this.user = JSON.parse(JSON.stringify(this.originalUser));
+                this.isEditing = false;
+            },
+            handleAvatarSuccess(res, file) {
+                console.log(res)
+                this.user.avatarUrl = res; // 假设服务器返回的数据中包含了新的头像URL
+                // 更新 localStorage 中的用户信息
+                localStorage.setItem('userInfo', JSON.stringify(this.user));
+                // 调用更新用户信息的接口
+                this.saveProfile();
+            },
+            beforeAvatarUpload(file) {
+                const isJPG = file.type === 'image/jpeg';
+                const isPNG = file.type === 'image/png';
+                const isLt2M = file.size / 1024 / 1024 < 2;
+
+                if (!isJPG && !isPNG) {
+                    this.$message.error('上传头像图片只能是 JPG 或 PNG 格式!');
+                }
+                if (!isLt2M) {
+                    this.$message.error('上传头像图片大小不能超过 2MB!');
+                }
+                return (isJPG || isPNG) && isLt2M;
+            }
+        },
+        mounted() {
+            this.loadUserInfo();
+        }
+    });
+</script>
+</body>
+</html>
