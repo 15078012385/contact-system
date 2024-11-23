@@ -48,7 +48,7 @@ public class SystemLogAOP {
         HttpServletRequest request = attributes.getRequest();
 
         // 检查请求路径是否以 /file/ 开头
-        if (request.getRequestURI().startsWith("/file/")) {
+        if (request.getRequestURI().startsWith("/file/")|request.getRequestURI().contains("import")|request.getRequestURI().contains("export")) {
             return pjp.proceed();
         }
 

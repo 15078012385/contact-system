@@ -80,6 +80,15 @@
             <el-button type="danger" icon="el-icon-delete" @click="handleBatchDelete" size="small"
                        :disabled="selectedContacts.length === 0">批量删除
             </el-button>
+            <el-button type="warning" icon="el-icon-download" @click="exportContacts" size="small">导出</el-button>
+            <el-upload
+                    action="/api/contacts/import"
+                    :show-file-list="false"
+                    :on-success="handleImportSuccess"
+                    :on-error="handleImportError"
+                    style="display: inline-block;">
+                <el-button type="warning" icon="el-icon-upload2" size="small">导入</el-button>
+            </el-upload>
         </div>
     </el-card>
 
@@ -405,6 +414,21 @@
             // 删除手机号项
             removePhone(index) {
                 this.currentContact.mobile.splice(index, 1);
+            },
+            exportContacts() {
+                this.userId=JSON.parse(localStorage.getItem('userInfo')).id;
+                if (!this.userId) {
+                    this.$message.error('用户ID不存在');
+                    return;
+                }
+                window.location.href = `/api/contacts/export/${this.userId}`;
+            },
+            handleImportSuccess(response) {
+                this.$message.success('导入成功');
+                this.fetchContacts();
+            },
+            handleImportError(error) {
+                this.$message.error('导入失败');
             }
         }
     });

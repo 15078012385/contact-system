@@ -1,5 +1,9 @@
 package com.coco.controller;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.poi.excel.ExcelReader;
+import cn.hutool.poi.excel.ExcelUtil;
+import cn.hutool.poi.excel.ExcelWriter;
 import com.coco.mapper.ContactMapper;
 import com.coco.pojo.Contact;
 import com.coco.utils.ApiResponse;
@@ -7,7 +11,15 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -139,5 +151,87 @@ public class ContactController {
     public ApiResponse<Map<String, Integer>> countContactsByUserId(@PathVariable Integer userId) {
         Map<String, Integer> result = contactMapper.countContactsByUserId(userId);
         return ApiResponse.success(result);
+    }
+
+    /**
+     * 导出个人的联系人列表
+     *
+     * @param userId   用户ID
+     * @param response HTTP响应
+     */
+    @GetMapping("/export/{userId}")
+    public void exportContacts(@PathVariable Integer userId, HttpServletResponse response) throws Exception {
+        // 从数据库查询出所有的数据
+        List<Contact> list = contactMapper.selectByUserId(userId, null);
+
+        // 在内存操作，写出到浏览器
+        ExcelWriter writer = ExcelUtil.getWriter(true);
+
+        // 自定义标题别名
+        writer.addHeaderAlias("id", "ID");
+        writer.addHeaderAlias("userId", "用户ID");
+        writer.addHeaderAlias("name", "姓名");
+        writer.addHeaderAlias("avatar", "头像");
+        writer.addHeaderAlias("mobile", "手机号码");
+        writer.addHeaderAlias("email", "电子邮箱");
+        writer.addHeaderAlias("address", "联系地址");
+        writer.addHeaderAlias("birthday", "生日");
+        writer.addHeaderAlias("company", "公司名称");
+        writer.addHeaderAlias("position", "职位");
+        writer.addHeaderAlias("remark", "备注信息");
+        writer.addHeaderAlias("collectStatus", "收藏状态");
+        writer.addHeaderAlias("created", "创建时间");
+        writer.addHeaderAlias("updated", "更新时间");
+
+        // 一次性写出list内的对象到excel，使用默认样式，强制输出标题
+        writer.write(list, true);
+
+        // 设置浏览器响应的格式
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8");
+        String fileName = URLEncoder.encode("联系人信息", "UTF-8");
+        response.setHeader("Content-Disposition", "attachment;filename=" + fileName + ".xlsx");
+
+        ServletOutputStream out = response.getOutputStream();
+        writer.flush(out, true);
+        out.close();
+        writer.close();
+    }
+
+    /**
+     * excel 导入
+     *
+     * @param file 导入的文件
+     * @return API响应
+     */
+    @PostMapping("/import")
+    public ApiResponse<Void> importContacts(@RequestParam("file") MultipartFile file) throws Exception {
+        InputStream inputStream = file.getInputStream();
+        ExcelReader reader = ExcelUtil.getReader(inputStream);
+        // 方式2：忽略表头的中文，直接读取表的内容
+        List<List<Object>> list = reader.read(1);
+        List<Contact> contacts = CollUtil.newArrayList();
+        for (List<Object> row : list) {
+            Contact contact = new Contact();
+            contact.setId(Integer.parseInt(row.get(0).toString()));
+            contact.setUserId(Integer.parseInt(row.get(1).toString()));
+            contact.setName(row.get(2).toString());
+            contact.setAvatar(row.get(3).toString());
+            contact.setMobile(row.get(4).toString());
+            contact.setEmail(row.get(5).toString());
+            contact.setAddress(row.get(6).toString());
+            contact.setBirthday(LocalDateTime.parse(row.get(7).toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            contact.setCompany(row.get(8).toString());
+            contact.setPosition(row.get(9).toString());
+            contact.setRemark(row.get(10).toString());
+            contact.setCollectStatus(Integer.parseInt(row.get(11).toString()));
+            contact.setCreated(LocalDateTime.parse(row.get(12).toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            contact.setUpdated(LocalDateTime.parse(row.get(13).toString(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            contacts.add(contact);
+        }
+
+        for (Contact contact : contacts) {
+            contactMapper.insert(contact);
+        }
+        return ApiResponse.success("导入成功", null);
     }
 }

@@ -63,6 +63,8 @@
             <mvc:exclude-mapping path="/**/*.ttf"/>
             <mvc:exclude-mapping path="/**/*.woff2"/>
             <mvc:exclude-mapping path="/**/*.svg"/>
+            <mvc:exclude-mapping path="/**/export/**"/>
+            <mvc:exclude-mapping path="/**/import/**"/>
             <bean class="com.coco.interceptor.JwtAuthInterceptor"/>
         </mvc:interceptor>
     </mvc:interceptors>
